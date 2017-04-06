@@ -21,11 +21,9 @@ import java.net.URL;
 
 public class GetWeatherTask extends AsyncTask<URL,Void,WeatherForecast> {
     private View parentView;
-    private PostExecuteCallback callback;
 
-    public GetWeatherTask(View parentView,PostExecuteCallback callback){
+    public GetWeatherTask(View parentView){
         this.parentView = parentView;
-        this.callback = callback;
     }
 
 
@@ -75,8 +73,5 @@ public class GetWeatherTask extends AsyncTask<URL,Void,WeatherForecast> {
         return null;
     }
 
-    @Override
-    protected void onPostExecute(WeatherForecast weatherForecast) {
-        callback.postExecute(weatherForecast);
-    }
+
 }

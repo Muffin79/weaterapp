@@ -36,8 +36,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity
-        implements PostExecuteCallback {
+public class MainActivity extends AppCompatActivity {
 
     private final String TAG = "MainActivity";
     private SharedPreferences.OnSharedPreferenceChangeListener sharedPreferenceChangeListener =
@@ -148,7 +147,7 @@ public class MainActivity extends AppCompatActivity
 
         if (url != null) {
             GetWeatherTask localWeatherTask =
-                    new GetWeatherTask(findViewById(R.id.coordinatorLayout), MainActivity.this);
+                    new LoadWeatherTask(findViewById(R.id.coordinatorLayout));
             localWeatherTask.execute(url);
         } else {
             Snackbar.make(findViewById(R.id.coordinatorLayout),
@@ -247,7 +246,7 @@ public class MainActivity extends AppCompatActivity
 
                         if (url != null) {
                             GetWeatherTask localWeatherTask =
-                                    new GetWeatherTask(findViewById(R.id.coordinatorLayout), MainActivity.this);
+                                    new GetWeatherTask(findViewById(R.id.coordinatorLayout));
                             localWeatherTask.execute(url);
                         } else {
                             Snackbar.make(findViewById(R.id.coordinatorLayout),
@@ -257,17 +256,23 @@ public class MainActivity extends AppCompatActivity
                 });
     }
 
-    @Override
-    public void postExecute(WeatherForecast forecast) {
-        weatherForecast = forecast;
-        weatherList.clear();
-        getSupportActionBar().setSubtitle(forecast.getCity().getCityName());
-        writeCityToPreferences(forecast.getCity().getCityName());
-        weatherList.addAll(forecast.list);
-        Log.d(TAG,"List size : " + weatherList.size());
-        adapter.notifyDataSetChanged();
-        weatherListView.smoothScrollToPosition(0);
-    }
+    private class LoadWeatherTask extends GetWeatherTask{
 
+        public LoadWeatherTask(View parentView) {
+            super(parentView);
+        }
+
+        @Override
+        protected void onPostExecute(WeatherForecast forecast) {
+            weatherForecast = forecast;
+            weatherList.clear();
+            getSupportActionBar().setSubtitle(forecast.getCity().getCityName());
+            writeCityToPreferences(forecast.getCity().getCityName());
+            weatherList.addAll(forecast.list);
+            Log.d(TAG,"List size : " + weatherList.size());
+            adapter.notifyDataSetChanged();
+            weatherListView.smoothScrollToPosition(0);
+        }
+    }
 
 }
