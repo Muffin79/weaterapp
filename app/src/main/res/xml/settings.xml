@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:tools="http://schemas.android.com/tools"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+    <EditTextPreference
+        android:defaultValue="15"
+        android:title="@string/count_of_days_hint"
+        android:inputType="number"
+        android:key="@string/pref_countOfDays"
+        android:persistent="true"
+        android:singleLine="true" />
+
+    <ListPreference
+        android:title="@string/temp_units"
+        android:entries="@array/temp_units_keys"
+        android:key="@string/pref_temp_units"
+        android:entryValues="@array/temp_units_values"
+        android:persistent="true"
+        />
+
+
+</PreferenceScreen>
