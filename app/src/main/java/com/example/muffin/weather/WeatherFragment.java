@@ -1,5 +1,7 @@
 package com.example.muffin.weather;
 
+import android.content.res.AssetManager;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.design.widget.BaseTransientBottomBar;
@@ -14,6 +16,8 @@ import android.widget.TextView;
 import com.example.muffin.weather.GsonModels.DayForecast;
 import com.squareup.picasso.Picasso;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.text.NumberFormat;
 
 
@@ -50,8 +54,9 @@ public class WeatherFragment extends Fragment {
         }
         conditionImageView = (ImageView)
                 v.findViewById(R.id.conditionImageView);
-        Picasso.with(getActivity()).load(forecast.getIconUrl())
-                .into(conditionImageView);
+       /* Picasso.with(getActivity()).load(forecast.getIconUrl())
+                .into(conditionImageView);*/
+       loadImage(forecast.weather.get(0).getIcon());
         NumberFormat numberFormat = NumberFormat.getInstance();
         numberFormat.setMaximumFractionDigits(0);
 
@@ -86,5 +91,15 @@ public class WeatherFragment extends Fragment {
 
 
         return v;
+    }
+
+    void loadImage(String iconName){
+        AssetManager assets = getActivity().getAssets();
+
+        try(InputStream in = assets.open("forecast/" + iconName + ".png")){
+            conditionImageView.setImageDrawable(Drawable.createFromStream(in,iconName));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

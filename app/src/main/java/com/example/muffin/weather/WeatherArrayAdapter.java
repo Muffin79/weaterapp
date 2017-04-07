@@ -2,7 +2,9 @@ package com.example.muffin.weather;
 
 
 import android.content.Context;
+import android.content.res.AssetManager;
 import android.graphics.Bitmap;
+import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -17,6 +19,8 @@ import android.widget.TextView;
 import com.example.muffin.weather.GsonModels.DayForecast;
 import com.squareup.picasso.Picasso;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +30,7 @@ public class WeatherArrayAdapter extends ArrayAdapter<DayForecast>{
     private final String TAG = "WeatherArrayAdapter";
 
 
-    private Map<String,Bitmap> bitmaps = new HashMap<>();
+    private Map<String,Drawable> bitmaps = new HashMap<>();
 
     public WeatherArrayAdapter(Context context, List<DayForecast> forecast){
         super(context,-1,forecast);
@@ -43,7 +47,6 @@ public class WeatherArrayAdapter extends ArrayAdapter<DayForecast>{
     @NonNull
     @Override
     public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
-        Log.d(TAG,"Init view!");
         final DayForecast day = getItem(position);
 
         final ViewHolder viewHolder;
@@ -68,16 +71,16 @@ public class WeatherArrayAdapter extends ArrayAdapter<DayForecast>{
             // Cуществующий объект ViewHolder используется заново
             viewHolder = (ViewHolder) convertView.getTag();
         }
-
+        AssetManager assets = getContext().getAssets();
         if(bitmaps.containsKey(day.getIconUrl())){
-            Log.d(TAG,"Has icons!");
-            viewHolder.conditionImageView.setImageBitmap(bitmaps.get(day.getIconUrl()));
+            viewHolder.conditionImageView.setImageDrawable(bitmaps.get(day.getIconUrl()));
         }else{
             // Загрузить и вывести значок погодных условий
-            Log.d(TAG,"Loading icon");
-
-            new LoadImageTask(viewHolder.conditionImageView).execute(
-                     day.getIconUrl());
+            Log.d(TAG,day.weather.get(0).description + day.getIconUrl());
+            bitmaps.put(day.getIconUrl(),loadImage(day.weather.get(0).getIcon()));
+            viewHolder.conditionImageView.setImageDrawable(bitmaps.get(day.getIconUrl()));
+            /*new LoadImageTask(viewHolder.conditionImageView).execute(
+                     day.getIconUrl());*/
         }
 
         viewHolder.dayTextView.setText(day.getDayOfWeek());
@@ -88,7 +91,19 @@ public class WeatherArrayAdapter extends ArrayAdapter<DayForecast>{
         return convertView;
     }
 
-    private class LoadImageTask extends AsyncTask<String,Void,Bitmap>{
+    @Nullable
+    private Drawable loadImage(String iconName){
+        AssetManager assets = getContext().getAssets();
+
+        try(InputStream in = assets.open("forecast/" + iconName + ".png")){
+            return Drawable.createFromStream(in,iconName);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+   /* private class LoadImageTask extends AsyncTask<String,Void,Bitmap>{
         private ImageView imageView;
 
         public LoadImageTask(ImageView imageView){
@@ -112,5 +127,5 @@ public class WeatherArrayAdapter extends ArrayAdapter<DayForecast>{
         protected void onPostExecute(Bitmap bitmap) {
             imageView.setImageBitmap(bitmap);
         }
-    }
+    }*/
 }

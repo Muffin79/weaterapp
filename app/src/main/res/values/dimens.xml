@@ -5,4 +5,6 @@
     <dimen name="fab_margin">16dp</dimen>
     <dimen name="fab_margin_top">90dp</dimen>
     <dimen name="image_side_length">50dp</dimen>
+    <dimen name="weather_frag_img_leng">128dp</dimen>
+    <dimen name="list_item_image_margin">10dp</dimen>
 </resources>
