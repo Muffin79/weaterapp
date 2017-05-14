@@ -1,4 +1,4 @@
-package com.example.muffin.weather;
+package com.example.muffin.weather.fragments;
 
 import android.content.res.AssetManager;
 import android.graphics.drawable.Drawable;
@@ -14,7 +14,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.example.muffin.weather.GsonModels.DayForecast;
-import com.squareup.picasso.Picasso;
+import com.example.muffin.weather.R;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -54,8 +54,6 @@ public class WeatherFragment extends Fragment {
         }
         conditionImageView = (ImageView)
                 v.findViewById(R.id.conditionImageView);
-       /* Picasso.with(getActivity()).load(forecast.getIconUrl())
-                .into(conditionImageView);*/
        loadImage(forecast.weather.get(0).getIcon());
         NumberFormat numberFormat = NumberFormat.getInstance();
         numberFormat.setMaximumFractionDigits(0);

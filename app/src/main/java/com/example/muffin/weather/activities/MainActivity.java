@@ -1,4 +1,4 @@
-package com.example.muffin.weather;
+package com.example.muffin.weather.activities;
 
 import android.Manifest;
 import android.content.Context;
@@ -6,13 +6,12 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
-import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
@@ -26,33 +25,40 @@ import android.widget.ListView;
 
 import com.example.muffin.weather.GsonModels.DayForecast;
 import com.example.muffin.weather.GsonModels.WeatherForecast;
+import com.example.muffin.weather.R;
+import com.example.muffin.weather.WeatherArrayAdapter;
+import com.example.muffin.weather.WeatherLoader;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 
 
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
     private final String TAG = "MainActivity";
-    private SharedPreferences.OnSharedPreferenceChangeListener sharedPreferenceChangeListener =
+    private final SharedPreferences.OnSharedPreferenceChangeListener PREF_CHANGE_LISTENER =
             new SharedPreferences.OnSharedPreferenceChangeListener() {
                 @Override
                 public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-                    loadWeather(getLastCity());
+                    loadWeather(true);
                 }
             };
     public static final String PREFERENCE_LAST_CITY = "preference_last_city";
+    private static final int WEATHER_LOADER_ID = 1234543321;
 
-    private List<DayForecast> weatherList = new ArrayList<>();
-    private WeatherForecast weatherForecast;
-    private WeatherArrayAdapter adapter;
-    private ListView weatherListView;
-    GoogleApiClient client;
+    private List<DayForecast> mWeatherList = new ArrayList<>();
+    private WeatherForecast mWeatherForecast;
+    private WeatherArrayAdapter mAdapter;
+    private ListView mWeatherListView;
+    GoogleApiClient mClient;
+
+    private String mCity;
+    private Location mLocation;
+    private boolean mIsByLocation = false;
 
 
     @Override
@@ -64,25 +70,25 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
 
         PreferenceManager.getDefaultSharedPreferences(this)
-                .registerOnSharedPreferenceChangeListener(sharedPreferenceChangeListener);
-        client = new GoogleApiClient.Builder(this)
+                .registerOnSharedPreferenceChangeListener(PREF_CHANGE_LISTENER);
+        mClient = new GoogleApiClient.Builder(this)
                 .addApi(LocationServices.API)
                 .build();
 
-        weatherListView = (ListView) findViewById(R.id.wetherListView);
-        adapter = new WeatherArrayAdapter(this, weatherList);
-        weatherListView.setAdapter(adapter);
+        mWeatherListView = (ListView) findViewById(R.id.wetherListView);
+        mAdapter = new WeatherArrayAdapter(this, mWeatherList);
+        mWeatherListView.setAdapter(mAdapter);
 
-        String city = getLastCity();
-        if (!city.isEmpty()) {
-            loadWeather(city);
+        mCity = getLastCity();
+        if (!mCity.isEmpty()) {
+            loadWeather(false);
         }
 
-        weatherListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        mWeatherListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 Intent intent = WeatherPagerActivity.newIntent(MainActivity.this,
-                        weatherForecast,
+                        mWeatherForecast,
                         position);
                 startActivity(intent);
             }
@@ -93,24 +99,34 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 EditText locationEditText = (EditText) findViewById(R.id.locationEditText);
+                mCity = locationEditText.getText().toString();
 
-                loadWeather(locationEditText.getText().toString());
+                loadWeather(true);
 
                 dismissKeyboard(locationEditText);
             }
         });
     }
 
+    private void loadWeather(boolean restart){
+        LoaderManager.LoaderCallbacks<WeatherForecast> callbacks = new WeatherCallbacks();
+        if(restart){
+            getSupportLoaderManager().restartLoader(WEATHER_LOADER_ID,Bundle.EMPTY,callbacks);
+        }else{
+            getSupportLoaderManager().initLoader(WEATHER_LOADER_ID,Bundle.EMPTY,callbacks);
+        }
+    }
+
     @Override
     protected void onStart() {
         super.onStart();
-        client.connect();
+        mClient.connect();
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        client.disconnect();
+        mClient.disconnect();
     }
 
     @Override
@@ -142,23 +158,12 @@ public class MainActivity extends AppCompatActivity {
         return sharedPreferences.getString(PREFERENCE_LAST_CITY, "");
     }
 
-    private void loadWeather(String city) {
-        URL url = createURL(city);
-
-        if (url != null) {
-            GetWeatherTask localWeatherTask =
-                    new LoadWeatherTask(findViewById(R.id.coordinatorLayout));
-            localWeatherTask.execute(url);
-        } else {
-            Snackbar.make(findViewById(R.id.coordinatorLayout),
-                    R.string.invalid_url, Snackbar.LENGTH_SHORT).show();
-        }
-    }
 
     private void writeCityToPreferences(String city) {
         SharedPreferences.Editor editor = getSharedPreferences(
                 getString(R.string.preference_file_key), Context.MODE_PRIVATE).edit();
         editor.putString(PREFERENCE_LAST_CITY, city);
+        editor.apply();
         editor.commit();
     }
 
@@ -169,60 +174,44 @@ public class MainActivity extends AppCompatActivity {
         manager.hideSoftInputFromWindow(view.getWindowToken(), 0);
     }
 
-    @Nullable
-    private URL createURL(String city) {
-        String apiKey = getString(R.string.api_key);
-        String baseURL = getString(R.string.web_service_url);
-        SharedPreferences defaultPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-        String countOfDays = defaultPreferences
-                .getString(getString(R.string.pref_countOfDays), "");
-        String tempUnits = defaultPreferences
-                .getString(getString(R.string.pref_temp_units), "");
 
-        try {
-            //Создаем URL
-            String urlString = Uri.parse(baseURL).buildUpon()
-                    .appendQueryParameter("q", city)
-                    .appendQueryParameter("units",tempUnits)
-                    .appendQueryParameter("cnt",countOfDays)
-                    .appendQueryParameter("APPID",apiKey)
-                    .build().toString();
-            return new URL(urlString);
-        } catch (Exception e) {
-            e.printStackTrace();
+
+
+    private void showWeather(WeatherForecast forecast){
+        if(forecast == null) return;
+        if(getSupportActionBar() != null){
+            getSupportActionBar().setSubtitle(forecast.getCity().getCityName());
         }
-
-        return null;
+        mWeatherForecast = forecast;
+        writeCityToPreferences(forecast.getCity().getCityName());
+        mWeatherList.clear();
+        mWeatherList.addAll(forecast.list);
+        Log.d(TAG,"List size : " + mWeatherList.size());
+        mAdapter.notifyDataSetChanged();
+        mWeatherListView.smoothScrollToPosition(0);
     }
 
-    @Nullable
-    private URL createURL(Location location) {
-        String apiKey = getString(R.string.api_key);
-        String baseURL = getString(R.string.web_service_url);
-        SharedPreferences defaultPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-        String countOfDays = defaultPreferences
-                .getString(getString(R.string.pref_countOfDays), "");
-        String tempUnits = defaultPreferences
-                .getString(getString(R.string.pref_temp_units), "");
-        String lat = String.valueOf(location.getLatitude());
-        String lon = String.valueOf(location.getLongitude());
-        Log.d(TAG, "Lat :" + lat + "\nLon : " + lon);
+    private class WeatherCallbacks implements LoaderManager.LoaderCallbacks<WeatherForecast>{
 
-        try {
-            //Создаем URL
-            String urlString = Uri.parse(baseURL).buildUpon()
-                    .appendQueryParameter("lat",lat)
-                    .appendQueryParameter("lon",lon)
-                    .appendQueryParameter("units",tempUnits)
-                    .appendQueryParameter("cnt",countOfDays)
-                    .appendQueryParameter("APPID",apiKey)
-                    .build().toString();
-            return new URL(urlString);
-        } catch (Exception e) {
-            e.printStackTrace();
+        @Override
+        public Loader<WeatherForecast> onCreateLoader(int id, Bundle args) {
+            if(mLocation != null && mIsByLocation){
+                mIsByLocation = false;
+                return new WeatherLoader(MainActivity.this,mLocation);
+            }
+
+            return new WeatherLoader(MainActivity.this,mCity);
         }
 
-        return null;
+        @Override
+        public void onLoadFinished(Loader<WeatherForecast> loader, WeatherForecast data) {
+            showWeather(data);
+        }
+
+        @Override
+        public void onLoaderReset(Loader<WeatherForecast> loader) {
+
+        }
     }
 
 
@@ -231,48 +220,20 @@ public class MainActivity extends AppCompatActivity {
                 != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
-
             return;
         }
         LocationRequest request = LocationRequest.create();
         request.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         request.setNumUpdates(1);
         request.setInterval(0);
-        LocationServices.FusedLocationApi.requestLocationUpdates(client, request,
+        LocationServices.FusedLocationApi.requestLocationUpdates(mClient, request,
                 new LocationListener() {
                     @Override
                     public void onLocationChanged(Location location) {
-                        URL url = createURL(location);
-
-                        if (url != null) {
-                            GetWeatherTask localWeatherTask =
-                                    new GetWeatherTask(findViewById(R.id.coordinatorLayout));
-                            localWeatherTask.execute(url);
-                        } else {
-                            Snackbar.make(findViewById(R.id.coordinatorLayout),
-                                    R.string.invalid_url, Snackbar.LENGTH_SHORT).show();
-                        }
+                        mIsByLocation = true;
+                        mLocation = location;
+                        loadWeather(true);
                     }
                 });
     }
-
-    private class LoadWeatherTask extends GetWeatherTask{
-
-        public LoadWeatherTask(View parentView) {
-            super(parentView);
-        }
-
-        @Override
-        protected void onPostExecute(WeatherForecast forecast) {
-            weatherForecast = forecast;
-            weatherList.clear();
-            getSupportActionBar().setSubtitle(forecast.getCity().getCityName());
-            writeCityToPreferences(forecast.getCity().getCityName());
-            weatherList.addAll(forecast.list);
-            Log.d(TAG,"List size : " + weatherList.size());
-            adapter.notifyDataSetChanged();
-            weatherListView.smoothScrollToPosition(0);
-        }
-    }
-
 }

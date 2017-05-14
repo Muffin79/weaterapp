@@ -1,8 +1,12 @@
-package com.example.muffin.weather;
+package com.example.muffin.weather.fragments;
+
 
 import android.preference.PreferenceFragment;
+
 import android.support.annotation.Nullable;
 import android.os.Bundle;
+
+import com.example.muffin.weather.R;
 
 
 /**

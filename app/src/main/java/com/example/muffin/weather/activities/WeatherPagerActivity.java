@@ -1,4 +1,4 @@
-package com.example.muffin.weather;
+package com.example.muffin.weather.activities;
 
 import android.content.Context;
 import android.content.Intent;
@@ -15,7 +15,8 @@ import android.widget.Toolbar;
 
 import com.example.muffin.weather.GsonModels.DayForecast;
 import com.example.muffin.weather.GsonModels.WeatherForecast;
-
+import com.example.muffin.weather.R;
+import com.example.muffin.weather.fragments.WeatherFragment;
 
 
 import java.util.ArrayList;
@@ -25,7 +26,6 @@ import java.util.List;
 
 public class WeatherPagerActivity extends FragmentActivity {
 
-    private final String TAG = "WeatherPagerActivity";
     public static final String EXTRA_FORECAST = "com.example.muffin.weather.extra_forecast";
     public static final String EXTRA_POSITION = "com.example.muffin.weather.extra_position";
 
